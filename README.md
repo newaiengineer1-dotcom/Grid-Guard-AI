@@ -1,5 +1,5 @@
 # ⚡ GridGuard AI
-Multi-agent incident response for Pakistan electricity outages and billing disputes, now powered by **CrewAI** with a premium tabbed dashboard.
+Multi-agent incident response for Pakistan electricity outages and billing disputes, now powered by Ai.
 
 ## Architecture
 Orchestrator → Location, Bill Auditor, Outage Detector, Weather, Regulation, Grid Analyst → Evidence → Action → Human Approval.
