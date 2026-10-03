@@ -3,14 +3,13 @@ import os
 import streamlit as st
 
 import ui_components as ui
-from agents import Orchestrator, PROVIDERS, crewai_available, run_crew_case
+from agents import Orchestrator, crewai_available, run_crew_case
 from ui_theme import THEME, css
 
 st.set_page_config(page_title="GridGuard AI", page_icon="⚡", layout="wide")
 
 CITIES = ["Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan", "Gujranwala", "Peshawar",
           "Quetta", "Hyderabad", "Sukkur"]
-RULES, CREW = "⚙️ Rules engine (offline)", "🤖 CrewAI crew (LLM)"
 
 
 def secret(name: str) -> str:
@@ -22,17 +21,11 @@ def secret(name: str) -> str:
 
 # ---------------------------------------------------------------- sidebar
 with st.sidebar:
-    st.markdown("## 🧠 Engine")
-    engine = st.radio("Engine", [RULES, CREW], label_visibility="collapsed",
-                      help="CrewAI runs each specialist as a real CrewAI agent with an LLM.")
-    provider, api_key, model = "Google Gemini", "", ""
-    if engine == CREW:
-        if not crewai_available():
-            st.warning("CrewAI is not installed here. `pip install crewai` (Python 3.10-3.13).")
-        provider = st.selectbox("🔌 LLM provider", list(PROVIDERS))
-        env = PROVIDERS[provider]["env"]
-        api_key = st.text_input(f"🔑 {env}", value=secret(env), type="password")
-        model = st.text_input("🧩 Model override (optional)", placeholder=PROVIDERS[provider]["model"])
+    st.markdown("## 🔑 Groq API")
+    if not crewai_available():
+        st.warning("CrewAI is not installed here. `pip install crewai` (Python 3.10-3.13).")
+    api_key = st.text_input("🔑 GROQ_API_KEY", value=secret("GROQ_API_KEY"), type="password",
+                            placeholder="gsk_...")
 
     st.markdown("## 📋 Case input")
     city = st.selectbox("🏙️ City", CITIES)
@@ -46,8 +39,7 @@ with st.sidebar:
     st.file_uploader("📸 Bill photo (attached as evidence)", type=["png", "jpg", "jpeg", "pdf"])
 
 st.markdown(css(THEME), unsafe_allow_html=True)
-st.markdown(ui.hero("CrewAI multi-agent crew" if engine == CREW else "Rules-based agents", crewai_available()),
-            unsafe_allow_html=True)
+st.markdown(ui.hero("CrewAI crew · Groq LLM", crewai_available()), unsafe_allow_html=True)
 
 tab_go, tab_trace, tab_stats, tab_act, tab_brief, tab_about = st.tabs(
     ["🚀 Investigate", "🕵️ Agent Trace", "📊 Analytics", "📝 Complaint & Approval", "🧠 Crew Briefing", "ℹ️ About"])
@@ -69,13 +61,8 @@ with tab_go:
             done.add(t["agent"])
             pipe.markdown(ui.stepper(done), unsafe_allow_html=True)
 
-        label = "Crew is investigating..." if engine == CREW else "Agents investigating..."
-        with st.spinner(label):
-            if engine == CREW:
-                result = run_crew_case(case, provider, api_key or None, model or None, on_step)
-            else:
-                result = Orchestrator().investigate(case, on_step)
-                result.update(mode="rules", crew_report="", warning="")
+        with st.spinner("Crew is investigating..."):
+            result = run_crew_case(case, api_key or None, None, on_step)
         st.session_state.update(result=result, case=case)
         st.toast("Investigation complete", icon="✅")
 
@@ -85,7 +72,7 @@ with tab_go:
         if res.get("warning"):
             st.warning("⚠️ " + res["warning"])
         elif res.get("mode") == "crewai":
-            st.success("🤖 Investigated by a CrewAI crew. Open the Crew Briefing tab for the LLM summary.")
+            st.success("🤖 Investigated by a CrewAI crew on Groq. Open the Crew Briefing tab for the LLM summary.")
         st.markdown(ui.kpis(res, case), unsafe_allow_html=True)
     else:
         st.markdown('<div class="gg-note">👈 Fill in the case on the left, then press '
@@ -160,8 +147,8 @@ with tab_brief:
         st.markdown("### 🤖 Case Officer briefing (CrewAI)")
         st.markdown(ui.briefing(res["crew_report"]), unsafe_allow_html=True)
     else:
-        st.markdown('<div class="gg-note">🤖 No CrewAI briefing for this run. Choose <b>CrewAI crew (LLM)</b> '
-                    'in the sidebar, add an API key, and launch again.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="gg-note">🤖 No CrewAI briefing for this run. Add your <b>GROQ_API_KEY</b> '
+                    'in the sidebar and launch again.</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------------- about
 with tab_about:
@@ -170,9 +157,9 @@ with tab_about:
 **🛰️ Pipeline:** 📍 Location → 🧾 Bill Auditor → 🔌 Outage Detector → 🌡️ Weather → ⚖️ Regulation →
 📡 Grid Analyst → 🕵️ Evidence → ✍️ Action → 🧑‍⚖️ Human approval
 
-**🤖 CrewAI mode:** every specialist is a real CrewAI agent with its own tool, running in a sequential crew,
-plus a Case Officer agent that writes the final briefing. If CrewAI or the API key is missing, the app
-falls back to the deterministic rules engine automatically.
+**🤖 CrewAI + Groq:** every specialist is a real CrewAI agent with its own tool, running in a sequential crew
+powered by Groq, plus a Case Officer agent that writes the final briefing. If CrewAI or the GROQ_API_KEY is
+missing, the app falls back to the deterministic rules engine automatically.
 
 **⚠️ Note:** tariff slabs and outage allowances are *illustrative*. Verify against NEPRA / DISCO notifications
 before filing.

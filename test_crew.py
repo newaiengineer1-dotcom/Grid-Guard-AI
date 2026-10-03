@@ -79,3 +79,15 @@ def test_ui_components_render():
     assert "gg-gauge" in ui.gauge(0.7) and "gg-bar" in ui.confidence_bars(r["trace"])
     assert "gg-hero" in ui.hero("x", True) and "gg-brief" in ui.briefing("hi")
     assert "--a1" in css(THEME)
+
+
+def test_groq_only_model_and_key_passed():
+    _install_fake_crewai()
+    seen = {}
+    orig = sys.modules["crewai"].LLM
+    sys.modules["crewai"].LLM = lambda **kw: (seen.update(kw), orig(**kw))[1]
+    try:
+        r = run_crew_case(dict(CASE), api_key="gsk_test")
+    finally:
+        _remove_fake()
+    assert r["mode"] == "crewai" and seen["model"].startswith("groq/") and seen["api_key"] == "gsk_test"
